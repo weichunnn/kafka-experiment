@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -18,9 +20,11 @@ const (
 
 func produce(ctx context.Context) {
 	i := 0
+	logger := log.New(os.Stdout, "kafka writer: ", 0)
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{broker1Address, broker2Address, broker3Address},
 		Topic:   topic,
+		Logger:  logger,
 	})
 
 	for {
@@ -41,10 +45,13 @@ func produce(ctx context.Context) {
 }
 
 func consume(ctx context.Context) {
+	readLogger := log.New(os.Stdout, "kafka reader: ", 0)
+
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{broker1Address, broker2Address, broker3Address},
 		Topic:   topic,
 		GroupID: "consumer-group-1",
+		Logger:  readLogger,
 	})
 
 	for {
@@ -53,7 +60,7 @@ func consume(ctx context.Context) {
 			panic("cannot read message with error: " + err.Error())
 		}
 
-		fmt.Printf("received %s from partion %d \n", string(msg.Value), msg.Partition)
+		fmt.Printf("received %s from partition %d \n", string(msg.Value), msg.Partition)
 	}
 }
 
