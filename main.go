@@ -25,7 +25,15 @@ func produce(ctx context.Context) {
 		Brokers: []string{broker1Address, broker2Address, broker3Address},
 		Topic:   topic,
 		Logger:  logger,
+		// wait until we get 10 messages before writing
+		BatchSize: 10,
+		// no matter what happens, write all pending messages
+		// every 2 seconds
+		BatchTimeout: 2 * time.Second,
+		RequiredAcks: 1, // only need leader to respond OK
 	})
+
+	defer w.Close()
 
 	for {
 		err :=
@@ -48,11 +56,16 @@ func consume(ctx context.Context) {
 	readLogger := log.New(os.Stdout, "kafka reader: ", 0)
 
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{broker1Address, broker2Address, broker3Address},
-		Topic:   topic,
-		GroupID: "consumer-group-1",
-		Logger:  readLogger,
+		Brokers:  []string{broker1Address, broker2Address, broker3Address},
+		Topic:    topic,
+		GroupID:  "consumer-group-1",
+		Logger:   readLogger,
+		MinBytes: 5,
+		MaxBytes: 1e6,
+		// wait for at most 3 seconds before receiving new data
+		MaxWait: 3 * time.Second,
 	})
+	defer r.Close()
 
 	for {
 		msg, err := r.ReadMessage(ctx)
